@@ -80,7 +80,7 @@ This project investigates the relationship between daily weather conditions and 
 - H₀: Precipitation volume has no effect on total daily TTC delay duration (β_precip = 0).
 - H₁: Higher precipitation is positively associated with greater total delay (β_precip > 0), with the effect potentially non-linear at higher precipitation volumes.
 
-The GitHub repository containing the source code (.qmd) and dataset for this project is available at: https://github.com/xiran-yin/JSC370/blob/main/midterm_final.qmd.
+The GitHub repository containing the source code (.qmd) for this project is available at: https://github.com/xiran-yin/JSC370.git.
 
 ---
 
@@ -88,14 +88,13 @@ The GitHub repository containing the source code (.qmd) and dataset for this pro
 
 ## Data Sources
 
-Two independent data streams were acquired programmatically, satisfying the mandatory API and scraping requirements:
-
-1. **Weather Data (Open-Meteo API):** Historical daily meteorological data for Toronto (latitude 43.70°N, longitude −79.42°W) was fetched via the Open-Meteo historical archive API, covering January 2014 to January 2026. Nine variables were extracted: daily maximum and minimum temperature (°C), apparent temperature maximum, total precipitation (mm), precipitation duration (hours), snowfall (cm), maximum wind speed (km/h), and maximum gust speed (km/h).
-
-2. **TTC Delay Data (Toronto Open Data CKAN API):** Subway delay records were retrieved via the City of Toronto Open Data portal API using the package identifier `ttc-subway-delay-data`. All available CSV and Excel resources were downloaded programmatically with flexible column-name matching to handle historical naming inconsistencies across years.
+Two independent datasets were used in this study.
+1. **Weather Data** (Open-Meteo API): Historical meteorological records for Toronto (latitude 43.70°N, longitude −79.42°W) were obtained from the Open-Meteo historical weather archive.
+2. **TTC Delay Data** (Toronto Open Data): Subway delay records were sourced from the City of Toronto Open Data portal under the dataset ttc-subway-delay-data, which provides historical records of delay incidents across the TTC subway network.
 
 ## Data Acquisition
-
+**Weather** data was obtained via the Open-Meteo Historical Weather API, a free, open-source archive providing sub-daily and daily meteorological records for any geographic coordinate. A single HTTP GET request was constructed with Toronto's coordinates (latitude 43.7001°N, longitude 79.4163°W) and a date range spanning January 2014 to January 2026, retrieving nine daily variables in JSON format: maximum and minimum temperature (°C), apparent temperature maximum (°C), total precipitation (mm), precipitation duration (hours), snowfall (cm), maximum 10 m wind speed (km/h), and maximum wind gust speed (km/h). From these raw variables, three additional features were derived: precipitation intensity (mm per hour of active precipitation, to distinguish short downpours from all-day drizzles of equal total volume), and binary flags for freezing nights (minimum temperature < 0°C), heatwave days (maximum temperature > 32°C, per Environment Canada's threshold), and stormy conditions (gust speed > 50 km/h).
+**TTC subway delay** data was retrieved via the City of Toronto Open Data CKAN API, which exposes a catalogue of municipal datasets as structured JSON. The package identifier ttc-subway-delay-data was used to query all available data resources, returning a list of downloadable files spanning multiple years in both CSV and Excel formats. Each file was fetched programmatically in a loop; because column naming conventions varied across years (e.g., "Date" vs. "Occurrence Date", "Min Delay" vs. "min_delay"), flexible substring matching was applied to identify the relevant date and delay-duration columns in each file before standardizing and appending them to a common pool. The resulting incident-level records were then aggregated to the daily level, computing the total cumulative delay (in minutes) and total number of recorded incidents for each calendar date.
 ```{python}
 #| label: weather-api
 
@@ -280,7 +279,7 @@ The following statistical tools were used for data exploration and analysis:
 # Preliminary Results
 
 ## Summary Statistics
-
+The final analytic dataset comprises 2,833 daily observations spanning 2014–2025. System-wide total delay averaged 153 minutes per day (SD = 106, range: 4–2,342 min), with substantial right skew driven by extreme weather events. On a typical day, approximately 61 delay incidents were recorded. Toronto's mean daily temperature ranged from −21°C to 31°C over the study period, while daily precipitation reached as high as 48 mm and snowfall as high as 24.6 cm. Maximum gust speeds averaged 41 km/h, with an observed maximum of 103 km/h.（Shown in Table 1.）
 ```{python}
 #| label: summary-stats-table
 #| output: true
@@ -302,6 +301,8 @@ desc['N'] = desc['N'].astype(int)
 ipy_display(Markdown("**Table 1.** Descriptive statistics of key variables.\n\n" + desc.to_markdown()))
 ```
 
+The merged dataset spans over a decade of daily observations with no missing values in key variables. As shown in Table 2, average daily delay increases monotonically from Clear days through Light Rain/Snow to Heavy Rain/Snow days, with Heavy precipitation days showing the widest spread (largest SD), consistent with unpredictable infrastructure stress. These patterns directly support H₁ and motivate formal regression testing.
+
 ```{python}
 #| label: weather-type-table
 #| output: true
@@ -322,8 +323,6 @@ summary_table.columns = ['Weather Type', 'N (days)', 'Mean Delay (min)',
 
 ipy_display(Markdown("**Table 2.** Summary statistics by weather type.\n\n" + summary_table.to_markdown(index=False)))
 ```
-
-The merged dataset spans over a decade of daily observations with no missing values in key variables. As shown in Table 2, average daily delay increases monotonically from Clear days through Light Rain/Snow to Heavy Rain/Snow days, with Heavy precipitation days showing the widest spread (largest SD), consistent with unpredictable infrastructure stress. These patterns directly support H₁ and motivate formal regression testing.
 
 ---
 
