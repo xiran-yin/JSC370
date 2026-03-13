@@ -19,7 +19,7 @@ execute:
 ```{python}
 #| label: setup-and-imports
 
-# ── Core data manipulation ─────────────────────────────────────────────────
+# Core data manipulation 
 import requests
 import pandas as pd
 import numpy as np
@@ -29,18 +29,18 @@ import re
 import time
 from collections import Counter
 
-# ── Visualization ──────────────────────────────────────────────────────────
+# Visualization 
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 import seaborn as sns
 from plotnine import *
 
-# ── Statistics and modelling ───────────────────────────────────────────────
+# Statistics and modelling 
 import statsmodels.api as sm
 import statsmodels.formula.api as smf
 from scipy.stats import spearmanr, ttest_ind
 
-# ── NLP ────────────────────────────────────────────────────────────────────
+# NLP 
 import nltk
 from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
@@ -50,7 +50,7 @@ from sklearn.decomposition import LatentDirichletAllocation
 from sklearn.model_selection import train_test_split
 from wordcloud import WordCloud
 
-# ── For rendering tables in report ─────────────────────────────────────────
+# For rendering tables in report 
 from IPython.display import Markdown, display as ipy_display
 
 nltk.download('vader_lexicon', quiet=True)
@@ -93,11 +93,14 @@ Two independent datasets were used in this study.
 2. **TTC Delay Data** (Toronto Open Data): Subway delay records were sourced from the City of Toronto Open Data portal under the dataset ttc-subway-delay-data, which provides historical records of delay incidents across the TTC subway network.
 
 ## Data Acquisition
-**Weather** data was obtained via the Open-Meteo Historical Weather API, a free, open-source archive providing sub-daily and daily meteorological records for any geographic coordinate. A single HTTP GET request was constructed with Toronto's coordinates (latitude 43.7001°N, longitude 79.4163°W) and a date range spanning January 2014 to January 2026, retrieving nine daily variables in JSON format: maximum and minimum temperature (°C), apparent temperature maximum (°C), total precipitation (mm), precipitation duration (hours), snowfall (cm), maximum 10 m wind speed (km/h), and maximum wind gust speed (km/h). From these raw variables, three additional features were derived: precipitation intensity (mm per hour of active precipitation, to distinguish short downpours from all-day drizzles of equal total volume), and binary flags for freezing nights (minimum temperature < 0°C), heatwave days (maximum temperature > 32°C, per Environment Canada's threshold), and stormy conditions (gust speed > 50 km/h).
-**TTC subway delay** data was retrieved via the City of Toronto Open Data CKAN API, which exposes a catalogue of municipal datasets as structured JSON. The package identifier ttc-subway-delay-data was used to query all available data resources, returning a list of downloadable files spanning multiple years in both CSV and Excel formats. Each file was fetched programmatically in a loop; because column naming conventions varied across years (e.g., "Date" vs. "Occurrence Date", "Min Delay" vs. "min_delay"), flexible substring matching was applied to identify the relevant date and delay-duration columns in each file before standardizing and appending them to a common pool. The resulting incident-level records were then aggregated to the daily level, computing the total cumulative delay (in minutes) and total number of recorded incidents for each calendar date.
+**Weather** data were retrieved programmatically from the Open-Meteo Historical Weather API. A single HTTP GET request was constructed using Toronto's geographic coordinates (latitude 43.7064°N, longitude −79.3986°W) and a date range spanning January 2014 to January 2026. The API returned daily meteorological observations in JSON format. Nine variables were extracted: daily maximum and minimum temperature (°C), apparent temperature maximum (°C), total precipitation (mm), precipitation duration (hours), snowfall (cm), maximum 10-m wind speed (km/h), and maximum wind gust speed (km/h).
+From these variables, three additional features were derived to better capture weather conditions that may affect transit reliability. Precipitation intensity was calculated as total precipitation divided by precipitation duration (mm/hour) to distinguish short downpours from long periods of light rain. Binary indicators were also created for freezing nights (minimum temperature < 0 °C), heatwave days (maximum temperature > 32 °C, following Environment Canada’s definition), and stormy conditions (maximum gust speed > 50 km/h).
+**TTC subway delay** data were collected through the City of Toronto Open Data CKAN API. Using the dataset identifier ttc-subway-delay-data, the API returned a catalogue of available resources containing historical delay records across multiple years. These files were programmatically downloaded in a loop and included both CSV and Excel formats.
+Because column naming conventions varied across years (e.g., “Date” vs. “Occurrence Date”, “Min Delay” vs. “min_delay”), flexible substring matching was used to identify the relevant date and delay-duration fields. After standardizing column names, all records were combined into a single dataset. The incident-level data were then aggregated to the daily level, producing two key variables for each calendar date: total delay duration (minutes) and total number of delay incidents.
+
 ```{python}
 #| label: weather-api
-
+#| 
 start_date = "2014-01-01"
 end_date   = "2026-01-01"
 
@@ -109,7 +112,7 @@ weather_params = (
 
 url_final = (
     f"https://archive-api.open-meteo.com/v1/archive?"
-    f"latitude=43.7001&longitude=-79.4163"
+    f"latitude=43.7064&longitude=-79.3986"
     f"&start_date={start_date}&end_date={end_date}&{weather_params}"
 )
 
