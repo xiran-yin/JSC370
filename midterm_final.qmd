@@ -80,7 +80,7 @@ This project investigates the relationship between daily weather conditions and 
 - H₀: Precipitation volume has no effect on total daily TTC delay duration (β_precip = 0).
 - H₁: Higher precipitation is positively associated with greater total delay (β_precip > 0), with the effect potentially non-linear at higher precipitation volumes.
 
-The GitHub repository containing the source code (.qmd) and dataset for this project is available at: [https://github.com/YOUR_USERNAME/YOUR_REPO](https://github.com/YOUR_USERNAME/YOUR_REPO).
+The GitHub repository containing the source code (.qmd) and dataset for this project is available at: https://github.com/xiran-yin/JSC370/blob/main/midterm_final.qmd.
 
 ---
 
