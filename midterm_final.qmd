@@ -66,9 +66,9 @@ warnings.filterwarnings('ignore')
 
 # Introduction
 
-Public transit systems are the backbone of urban mobility, yet they remain highly vulnerable to extreme weather conditions. In Toronto, the Toronto Transit Commission (TTC) serves over one million daily riders, but delays are a frequent and frustrating occurrence. Understanding the environmental triggers for these disruptions is crucial for better transit management and resource allocation. Exploring these relationships can help transit authorities anticipate disruptions and deploy resources more effectively before adverse conditions strike.
-
-This project investigates the relationship between daily weather conditions and TTC subway delays by merging a decade of meteorological records with transit delay data obtained from public APIs. The primary research questions are:
+Public transit systems play a critical role in supporting urban mobility. However, their reliability can be affected by environmental factors, particularly adverse weather conditions. In Toronto, a large metropolitan area, the Toronto Transit Commission (TTC) serves over one million daily riders, making service reliability an important component of urban infrastructure. Weather-related disruptions can lead to delays that affect commuting times, operational efficiency, and overall system performance. Understanding how weather conditions relate to transit delays can therefore provide useful insights for transit planning and operational decision-making.
+This project examines the relationship between daily weather conditions and TTC subway delays by combining more than a decade(12 years) of meteorological observations with publicly available transit delay records. By integrating these datasets, the analysis aims to quantify how different weather conditions correspond to variations in delay frequency and duration.
+The primary research questions guiding this analysis are:
 
 1. Is there a statistically significant association between adverse weather (specifically precipitation volume and extreme temperatures) and the total duration of daily TTC delays?
 2. How does the distribution of delay incidents vary across discrete weather categories (Clear, Light Rain/Snow, Heavy Rain/Snow)?
@@ -93,9 +93,9 @@ Two independent datasets were used in this study.
 2. **TTC Delay Data** (Toronto Open Data): Subway delay records were sourced from the City of Toronto Open Data portal under the dataset ttc-subway-delay-data, which provides historical records of delay incidents across the TTC subway network.
 
 ## Data Acquisition
-**Weather** data were retrieved programmatically from the Open-Meteo Historical Weather API. A single HTTP GET request was constructed using Toronto's geographic coordinates (latitude 43.7064°N, longitude −79.3986°W) and a date range spanning January 2014 to January 2026. The API returned daily meteorological observations in JSON format. Nine variables were extracted: daily maximum and minimum temperature (°C), apparent temperature maximum (°C), total precipitation (mm), precipitation duration (hours), snowfall (cm), maximum 10-m wind speed (km/h), and maximum wind gust speed (km/h).
-From these variables, three additional features were derived to better capture weather conditions that may affect transit reliability. Precipitation intensity was calculated as total precipitation divided by precipitation duration (mm/hour) to distinguish short downpours from long periods of light rain. Binary indicators were also created for freezing nights (minimum temperature < 0 °C), heatwave days (maximum temperature > 32 °C, following Environment Canada’s definition), and stormy conditions (maximum gust speed > 50 km/h).
-**TTC subway delay** data were collected through the City of Toronto Open Data CKAN API. Using the dataset identifier ttc-subway-delay-data, the API returned a catalogue of available resources containing historical delay records across multiple years. These files were programmatically downloaded in a loop and included both CSV and Excel formats.
+**Weather** data were retrieved programmatically from the Open-Meteo Historical Weather API. A single HTTP GET request was constructed using Toronto's geographic coordinates (latitude 43.7064°N, longitude −79.3986°W) and a date range spanning January 2014 to January 2026. The API returned daily meteorological observations in JSON format. Each record contained a calendar date and eight meteorological variables: daily maximum and minimum temperature (°C), apparent temperature maximum (°C), total precipitation (mm), precipitation duration (hours), snowfall (cm), maximum 10-m wind speed (km/h), and maximum wind gust speed (km/h).
+From these variables, four additional features were derived to better capture weather conditions that may affect transit reliability. Precipitation intensity was calculated as total precipitation divided by precipitation duration (mm/hour) to distinguish short downpours from long periods of light rain. Binary indicators were also created for freezing nights (minimum temperature < 0 °C), heatwave days (maximum temperature > 32 °C, following Environment Canada’s definition), and stormy conditions (maximum gust speed > 50 km/h).
+**TTC subway delay** data were retrieved via the City of Toronto Open Data CKAN API using the package identifier ttc-subway-delay-data. The API returned a catalogue of available resources containing historical delay records across multiple years. These files were programmatically downloaded in a loop and included both CSV and Excel formats.
 Because column naming conventions varied across years (e.g., “Date” vs. “Occurrence Date”, “Min Delay” vs. “min_delay”), flexible substring matching was used to identify the relevant date and delay-duration fields. After standardizing column names, all records were combined into a single dataset. The incident-level data were then aggregated to the daily level, producing two key variables for each calendar date: total delay duration (minutes) and total number of delay incidents.
 
 ```{python}
@@ -212,7 +212,7 @@ if response.status_code == 200:
 
 df_merged = pd.merge(df_ttc_daily, df_weather, on='date', how='inner')
 
-# ── Temporal features ──────────────────────────────────────────────────────
+# Temporal features 
 df_merged['year']        = df_merged['date'].dt.year
 df_merged['month']       = df_merged['date'].dt.month_name()
 df_merged['month_num']   = df_merged['date'].dt.month
@@ -224,7 +224,7 @@ df_merged['day_type'] = df_merged['is_weekend'].map(
     {True: 'Weekend', False: 'Weekday'}
 )
 
-# ── Weather-derived features ───────────────────────────────────────────────
+# Weather-derived features 
 df_merged['mean_temp_c'] = (df_merged['temp_max'] + df_merged['temp_min']) / 2
 
 def classify_weather(row):
@@ -237,13 +237,13 @@ def classify_weather(row):
 
 df_merged['weather_type'] = df_merged.apply(classify_weather, axis=1)
 
-# ── Delay efficiency metrics ───────────────────────────────────────────────
+# Delay efficiency metrics 
 df_merged['avg_delay_per_incident'] = (
     df_merged['total_delay_mins'] / df_merged['total_incidents']
 )
 df_merged['severity_index'] = df_merged['avg_delay_per_incident']
 
-# ── Categorical types for regression ──────────────────────────────────────
+# Categorical types for regression 
 df_merged['month_cat'] = pd.Categorical(df_merged['month'], ordered=False)
 df_merged['weather_type'] = pd.Categorical(
     df_merged['weather_type'],
@@ -262,9 +262,91 @@ n_obs = df_merged.shape[0]
 n_vars = df_merged.shape[1]
 date_min_str = str(df_merged['date'].min().date())
 date_max_str = str(df_merged['date'].max().date())
+# print(f"Final dataset: {n_obs} daily observations from {date_min_str} to {date_max_str}, with {n_vars} variables.")
+# print(df_merged.columns.tolist())
 ```
 
-After fetching weather data from the Open-Meteo API and TTC delay records from the Toronto Open Data CKAN API, the two datasets were merged on date via an inner join. Three derived weather features were computed: precipitation intensity (mm/hour), a three-level weather severity categorical variable (Clear / Light Rain/Snow / Heavy Rain/Snow), and boolean flags for freezing, heatwave, and stormy conditions. Incident-level TTC records were aggregated to the daily level, computing total delay minutes and total incident count per day. The final analytic dataset contains `{python} n_obs` observations across `{python} n_vars` variables, spanning `{python} year_min` to `{python} year_max`.
+Following the initial data acquisition and pre-processing, the aggregated daily TTC records and weather data were combined via an inner join on the date field. To facilitate the regression analysis, additional temporal and categorical features were engineered on this merged dataset. Building upon the initial meteorological indicators, a comprehensive three-level weather severity categorical variable (Clear / Light Rain/Snow / Heavy Rain/Snow) was created. Furthermore, temporal factors—such as month, day of the week, and a weekend/weekday flag—were extracted, alongside a newly computed delay severity index (average delay per incident). The final analytic dataset contains 2833 observations across 28 variables (detailed in @tbl-data-dictionary), spanning January 1, 2014, to January 1, 2026.
+
+```{python}
+#| label: tbl-data-dictionary
+#| tbl-cap: "Data Dictionary of Variables Used in the Analysis"
+
+# Define the data dictionary
+dict_data = {
+    "Variable": [
+        # Target Metrics
+        "date", "total_delay_mins", "total_incidents", 
+        "avg_delay_per_incident", "severity_index",
+        
+        # Base Weather
+        "temp_max", "temp_min", "feels_like", "mean_temp_c",
+        "precip_mm", "precip_hours", "snowfall_cm",
+        "max_wind_v", "gust_speed",
+        
+        # Derived Weather
+        "precip_intensity", "is_freezing", "is_heatwave", 
+        "is_stormy", "weather_type",
+        
+        # Temporal / Date Features
+        "year", "month", "month_num", "month_abbr", "month_cat",
+        "day_of_week", "day_type", "is_weekend", "is_weekend_int"
+    ],
+    "Category": [
+        "Base", "Target", "Target", "Derived Target", "Derived Target",
+        "Weather", "Weather", "Weather", "Derived Weather",
+        "Weather", "Weather", "Weather",
+        "Weather", "Weather",
+        "Derived Weather", "Derived Weather", "Derived Weather", 
+        "Derived Weather", "Derived Weather",
+        "Temporal", "Temporal", "Temporal", "Temporal", "Temporal",
+        "Temporal", "Temporal", "Temporal", "Temporal"
+    ],
+    "Description": [
+        # Target Metrics
+        "Calendar date of the observation (YYYY-MM-DD)",
+        "Total duration of all subway delays for the day (minutes)",
+        "Total count of individual subway delay incidents",
+        "Average duration per delay incident (total_delay_mins / total_incidents)",
+        "Copy of avg_delay_per_incident used as a severity metric",
+        
+        # Base Weather
+        "Maximum daily temperature (°C)",
+        "Minimum daily temperature (°C)",
+        "Maximum apparent ('feels like') temperature (°C)",
+        "Average of daily maximum and minimum temperatures (°C)",
+        "Total daily precipitation (mm)",
+        "Total hours of precipitation",
+        "Total daily snowfall (cm)",
+        "Maximum 10-m wind speed (km/h)",
+        "Maximum wind gust speed (km/h)",
+        
+        # Derived Weather
+        "Calculated precipitation intensity (mm/hour)",
+        "Boolean: True if temp_min < 0°C",
+        "Boolean: True if temp_max > 32°C",
+        "Boolean: True if gust_speed > 50 km/h",
+        "Categorical: 'Clear', 'Light Rain/Snow', or 'Heavy Rain/Snow'",
+        
+        # Temporal / Date Features
+        "Year of the observation",
+        "Full name of the month (e.g., 'January')",
+        "Month number (1-12)",
+        "Abbreviated month name (e.g., 'Jan')",
+        "Unordered categorical format of the month for regression",
+        "Name of the day of the week (e.g., 'Monday')",
+        "String: 'Weekend' or 'Weekday'",
+        "Boolean: True if Saturday or Sunday",
+        "Integer boolean: 1 for Weekend, 0 for Weekday"
+    ]
+}
+
+# Create the DataFrame
+df_data_dictionary = pd.DataFrame(dict_data)
+
+# Display the table (if running in a notebook/qmd)
+df_data_dictionary
+```
 
 ## Statistical Methods
 
@@ -287,7 +369,7 @@ The final analytic dataset comprises 2,833 daily observations spanning 2014–20
 #| label: summary-stats-table
 #| output: true
 
-# ── Key variable descriptive statistics ────────────────────────────────────
+# Key variable descriptive statistics 
 desc = (
     df_merged[['total_delay_mins', 'total_incidents',
                'mean_temp_c', 'precip_mm', 'snowfall_cm', 'gust_speed']]
