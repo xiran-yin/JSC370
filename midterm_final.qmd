@@ -87,6 +87,8 @@ The primary research questions guiding this analysis are:
 - H₀: Precipitation has no effect on total daily TTC delay duration (β_precip = 0).
 - H₁: Higher precipitation is positively associated with greater total delay (β_precip > 0), with the effect potentially non-linear at higher precipitation volumes.
 - H₂ (Social Impact): Higher quantitative delay severity is associated with increasingly negative public sentiment on social media, with discourse primarily focused on infrastructure and service failures.
+
+
 The GitHub repository containing the source code (.qmd) and rendered report (.html) for this project is available at: [https://github.com/xiran-yin/JSC370](https://github.com/xiran-yin/JSC370).
 
 
@@ -375,7 +377,7 @@ The following statistical tools were used for data exploration and analysis:
 # Preliminary Results
 
 ## Summary Statistics
-The final analytic dataset includes 4384 daily observations from January 1, 2014, to January 1, 2026. System-wide total delay averaged 144.31 minutes per day (SD = 96.88, range: 4–2342 minutes), with a positively skewed distribution primarily due to extreme weather events. On a typical day, the total number of delay incidents averaged 56.6. Mean daily temperature ranged from −21.3°C to 31.35°C, daily precipitation reached up to 48 mm, and snowfall up to 24.57 cm. Maximum gust speeds averaged 41.91 km/h, with a recorded maximum of 119.9 km/h, as shown in Table @summary-stats-table.
+The final analytic dataset includes 4384 daily observations from January 1, 2014, to January 1, 2026. System-wide total delay averaged 144.31 minutes per day (SD = 96.88, range: 4–2342 minutes), with a positively skewed distribution primarily due to extreme weather events. On a typical day, the total number of delay incidents averaged 56.6. Mean daily temperature ranged from −21.3°C to 31.35°C, daily precipitation reached up to 48 mm, and snowfall up to 24.57 cm. Maximum gust speeds averaged 41.91 km/h, with a recorded maximum of 119.9 km/h, as shown in Table @tbl-summary-stats-table.
 <details>
 <summary>Summary Statistics (click to expand)</summary>
 
@@ -404,7 +406,7 @@ ipy_display(Markdown("**Table 2.** Descriptive statistics of key variables.\n\n"
 
 </details>
 
-The merged dataset contains over a decade of daily observations with no missing values for key variables. As shown in Table @weather-type-table, average daily delay increases monotonically from Clear days (136.51 min) through Light Rain/Snow (145.86 min) to Heavy Rain/Snow days (178.73 min). Heavy precipitation days also exhibit the largest variability (SD = 174.03 min), reflecting the increased operational stress on the transit system. These descriptive patterns are consistent with H₁ and motivate subsequent formal regression analysis.
+The merged dataset contains over a decade of daily observations with no missing values for key variables. As shown in Table @tbl-weather-type-table, average daily delay increases monotonically from Clear days (136.51 min) through Light Rain/Snow (145.86 min) to Heavy Rain/Snow days (178.73 min). Heavy precipitation days also exhibit the largest variability (SD = 174.03 min), reflecting the increased operational stress on the transit system. These descriptive patterns are consistent with H₁ and motivate subsequent formal regression analysis.
 
 ```{python}
 #| label: tbl-weather-type-table
@@ -461,7 +463,7 @@ panels = [
 for i, (data, label, color) in enumerate(panels):
     ax = fig.add_subplot(gs[i])
     if i == 3:
-        ax.bar(data.index, data.values, color=color, alpha=0.6, width=1)
+        ax.bar(data.index, data.values, color=color, alpha=0.8, width=1.5)
         ax.axhline(0, color='black', linewidth=0.5, linestyle='--')
     else:
         ax.plot(data.index, data.values, color=color, linewidth=0.9)
@@ -906,7 +908,6 @@ if reddit_available:
 
 ## Lexical Analysis: Word Cloud
 ```{python}
-#| label: fig-wordcloud
 #| fig-cap: "**Figure 6.** Word cloud of the most frequent terms in r/TTC delay posts"
 #| output: true
 
@@ -940,7 +941,6 @@ The word cloud visualizes the most frequent terms in the r/TTC delay discourse. 
 
 ## Sentiment Distribution
 ```{python}
-#| label: fig-sentiment-hist
 #| fig-cap: "**Figure 7.** Distribution of VADER compound sentiment scores for r/TTC delay posts"
 #| fig-width: 9
 #| fig-height: 4
@@ -1061,7 +1061,6 @@ Latent Dirichlet Allocation (LDA) identified four distinct complaint themes with
 
 ## Topic-Sentiment Interaction
 ```{python}
-#| label: fig-lda-sentiment
 #| fig-cap: "**Figure 8.** Violin + boxplot of sentiment scores by LDA topic"
 #| output: true
 #| fig-width: 9
@@ -1092,7 +1091,6 @@ The topic–sentiment violin plot reveals that Topic 3 (Systemic Infrastructure)
 
 ## Validation by Delay Severity
 ```{python}
-#| label: fig-violin-quartile
 #| fig-cap: "**Figure 9.** Violin + boxplot of sentiment scores by daily delay quartile"
 #| output: true
 df_merged['delay_quartile'] = pd.qcut(
