@@ -89,18 +89,20 @@ The GitHub repository containing the source code (.qmd) and rendered report(.htm
 ## Data Sources
 
 Two independent datasets were used in this study.
+
 1. **Weather Data** (Open-Meteo API): Historical meteorological records for Toronto (latitude 43.70°N, longitude −79.42°W) were obtained from the Open-Meteo historical weather archive.
 2. **TTC Delay Data** (Toronto Open Data): Subway delay records were sourced from the City of Toronto Open Data portal under the dataset ttc-subway-delay-data, which provides historical records of delay incidents across the TTC subway network.
 
 ## Data Acquisition
+
 **Weather** data were retrieved programmatically from the Open-Meteo Historical Weather API. A single HTTP GET request was constructed using Toronto's geographic coordinates (latitude 43.7064°N, longitude −79.3986°W) and a date range spanning January 2014 to January 2026. The API returned daily meteorological observations in JSON format. Each record contained a calendar date and eight meteorological variables: daily maximum and minimum temperature (°C), apparent temperature maximum (°C), total precipitation (mm), precipitation duration (hours), snowfall (cm), maximum 10-m wind speed (km/h), and maximum wind gust speed (km/h).
 From these variables, four additional features were derived to better capture weather conditions that may affect transit reliability. Precipitation intensity was calculated as total precipitation divided by precipitation duration (mm/hour) to distinguish short downpours from long periods of light rain. Binary indicators were also created for freezing nights (minimum temperature < 0 °C), heatwave days (maximum temperature > 32 °C, following Environment Canada’s definition), and stormy conditions (maximum gust speed > 50 km/h).
-**TTC subway delay** data were retrieved via the City of Toronto Open Data CKAN API using the package identifier ttc-subway-delay-data. The API returned a catalogue of available resources containing historical delay records across multiple years. These files were programmatically downloaded in a loop and included both CSV and Excel formats.
-Because column naming conventions varied across years (e.g., “Date” vs. “Occurrence Date”, “Min Delay” vs. “min_delay”), flexible substring matching was used to identify the relevant date and delay-duration fields. After standardizing column names, all records were combined into a single dataset. The incident-level data were then aggregated to the daily level, producing two key variables for each calendar date: total delay duration (minutes) and total number of delay incidents.
+
+**TTC subway delay** data were retrieved programmatically via the City of Toronto Open Data CKAN API. The API returned a catalogue of historical resources across multiple years, presenting several data wrangling challenges. First, the files included both CSV and Excel formats, requiring conditional parsing. Second, column naming conventions varied significantly across years (e.g., “Date” vs. “Occurrence Date”, “Min Delay” vs. “min_delay”). To robustly clean this data, a flexible substring matching approach was implemented to dynamically identify the relevant date and delay-duration fields. Exception handling was also applied to manage file encoding errors and drop incomplete records. After standardizing the schema, all records were concatenated and aggregated to the daily level, yielding two primary metrics per date: total delay duration (minutes) and total delay incidents.
 
 ```{python}
 #| label: weather-api
-#| 
+
 start_date = "2014-01-01"
 end_date   = "2026-01-01"
 
@@ -265,29 +267,32 @@ date_max_str = str(df_merged['date'].max().date())
 # print(f"Final dataset: {n_obs} daily observations from {date_min_str} to {date_max_str}, with {n_vars} variables.")
 # print(df_merged.columns.tolist())
 ```
-
 Following the initial data acquisition and pre-processing, the aggregated daily TTC records and weather data were combined via an inner join on the date field. To facilitate the regression analysis, additional temporal and categorical features were engineered on this merged dataset. Building upon the initial meteorological indicators, a comprehensive three-level weather severity categorical variable (Clear / Light Rain/Snow / Heavy Rain/Snow) was created. Furthermore, temporal factors—such as month, day of the week, and a weekend/weekday flag—were extracted, alongside a newly computed delay severity index (average delay per incident). The final analytic dataset contains 2833 observations across 28 variables (detailed in @tbl-data-dictionary), spanning January 1, 2014, to January 1, 2026.
+
+<details>
+<summary>Data Dictionary (click to expand)</summary>
 
 ```{python}
 #| label: tbl-data-dictionary
 #| tbl-cap: "Data Dictionary of Variables Used in the Analysis"
+#| echo: false
+#| output: true
 
-# Define the data dictionary
+from IPython.display import Markdown, display
+import pandas as pd
+
 dict_data = {
     "Variable": [
         # Target Metrics
         "date", "total_delay_mins", "total_incidents", 
         "avg_delay_per_incident", "severity_index",
-        
         # Base Weather
         "temp_max", "temp_min", "feels_like", "mean_temp_c",
         "precip_mm", "precip_hours", "snowfall_cm",
         "max_wind_v", "gust_speed",
-        
         # Derived Weather
         "precip_intensity", "is_freezing", "is_heatwave", 
         "is_stormy", "weather_type",
-        
         # Temporal / Date Features
         "year", "month", "month_num", "month_abbr", "month_cat",
         "day_of_week", "day_type", "is_weekend", "is_weekend_int"
@@ -309,7 +314,6 @@ dict_data = {
         "Total count of individual subway delay incidents",
         "Average duration per delay incident (total_delay_mins / total_incidents)",
         "Copy of avg_delay_per_incident used as a severity metric",
-        
         # Base Weather
         "Maximum daily temperature (°C)",
         "Minimum daily temperature (°C)",
@@ -320,14 +324,12 @@ dict_data = {
         "Total daily snowfall (cm)",
         "Maximum 10-m wind speed (km/h)",
         "Maximum wind gust speed (km/h)",
-        
         # Derived Weather
         "Calculated precipitation intensity (mm/hour)",
         "Boolean: True if temp_min < 0°C",
         "Boolean: True if temp_max > 32°C",
         "Boolean: True if gust_speed > 50 km/h",
         "Categorical: 'Clear', 'Light Rain/Snow', or 'Heavy Rain/Snow'",
-        
         # Temporal / Date Features
         "Year of the observation",
         "Full name of the month (e.g., 'January')",
@@ -341,32 +343,33 @@ dict_data = {
     ]
 }
 
-# Create the DataFrame
 df_data_dictionary = pd.DataFrame(dict_data)
 
-# Display the table (if running in a notebook/qmd)
-df_data_dictionary
+display(Markdown(df_data_dictionary.to_markdown(index=False)))
 ```
+
+</details>
 
 ## Statistical Methods
 
 The following statistical tools were used for data exploration and analysis:
 
 - **Spearman rank correlation** to assess monotonic associations between weather variables and delay metrics, chosen because both delay totals and precipitation are strongly right-skewed.
-- **OLS multiple linear regression** with weather predictors (precipitation, snowfall, gust speed, temperature), a weekend indicator, and month fixed effects.
+- **OLS multiple linear regression** to establish a baseline model evaluating the linear effects of weather predictors (precipitation, snowfall, gust speed, temperature) while controlling for weekend and month fixed effects.
 - **Generalized Additive Model (GAM)** with spline smooths on precipitation and temperature to capture non-linear relationships, and factor terms for weekend status and month.
 - **STL time-series decomposition** to separate long-term trend, weekly seasonality, and residual weather spikes.
-- **VADER sentiment analysis** on Reddit r/TTC posts to quantify rider emotional response to delays.
-- **LDA topic modelling** to identify dominant complaint themes in rider discourse.
+- **Natural Language Processing (NLP)**: Applied VADER sentiment analysis to quantify rider emotional responses to delays, and LDA topic modelling to identify dominant complaint themes in Reddit (r/TTC) discourse.
 
 ---
 
 # Preliminary Results
 
 ## Summary Statistics
-The final analytic dataset comprises 2,833 daily observations spanning 2014–2025. System-wide total delay averaged 153 minutes per day (SD = 106, range: 4–2,342 min), with substantial right skew driven by extreme weather events. On a typical day, approximately 61 delay incidents were recorded. Toronto's mean daily temperature ranged from −21°C to 31°C over the study period, while daily precipitation reached as high as 48 mm and snowfall as high as 24.6 cm. Maximum gust speeds averaged 41 km/h, with an observed maximum of 103 km/h.（Shown in Table 1.）
+The final analytic dataset comprises 2,833 daily observations spanning 2014–2025. System-wide total delay averaged 153 minutes per day (SD = 106, range: 4–2,342 min), with substantial right skew driven by extreme weather events. On a typical day, approximately 61 delay incidents were recorded. Toronto's mean daily temperature ranged from −21°C to 31°C over the study period, while daily precipitation reached as high as 48 mm and snowfall as high as 24.6 cm. Maximum gust speeds averaged 41 km/h, with an observed maximum of 103 km/h.（Shown in @summary-stats-table）
 ```{python}
 #| label: summary-stats-table
+#| tbl-cap: "Descriptive statistics of key variables in the merged dataset (2014–2025)."
+#| echo: false
 #| output: true
 
 # Key variable descriptive statistics 
@@ -383,16 +386,18 @@ desc = desc[['count', 'mean', 'std', 'min', '25%', '50%', '75%', 'max']]
 desc.columns = ['N', 'Mean', 'SD', 'Min', 'Q1', 'Median', 'Q3', 'Max']
 desc['N'] = desc['N'].astype(int)
 
-ipy_display(Markdown("**Table 1.** Descriptive statistics of key variables.\n\n" + desc.to_markdown()))
+ipy_display(Markdown("**Table 2.** Descriptive statistics of key variables.\n\n" + desc.to_markdown()))
 ```
 
-The merged dataset spans over a decade of daily observations with no missing values in key variables. As shown in Table 2, average daily delay increases monotonically from Clear days through Light Rain/Snow to Heavy Rain/Snow days, with Heavy precipitation days showing the widest spread (largest SD), consistent with unpredictable infrastructure stress. These patterns directly support H₁ and motivate formal regression testing.
+The merged dataset spans over a decade of daily observations with no missing values in key variables. As shown in Table @weather-type-table, average daily delay increases monotonically from Clear days through Light Rain/Snow to Heavy Rain/Snow days, with Heavy precipitation days showing the widest spread (largest SD), consistent with unpredictable infrastructure stress. These patterns directly support H₁ and motivate formal regression testing.
 
 ```{python}
 #| label: weather-type-table
+#| tbl-cap: "Summary statistics of delay metrics by weather type category."
+#| echo: false
 #| output: true
 
-# ── Grouped summary by weather type ───────────────────────────────────────
+# Grouped summary by weather type 
 summary_table = df_merged.groupby('weather_type', observed=True).agg(
     N_days         =('date',             'count'),
     Avg_Delay_mins =('total_delay_mins', 'mean'),
@@ -406,7 +411,7 @@ summary_table.columns = ['Weather Type', 'N (days)', 'Mean Delay (min)',
                           'SD Delay', 'Median Delay (min)',
                           'Mean Incidents', 'Mean Severity (min/incident)']
 
-ipy_display(Markdown("**Table 2.** Summary statistics by weather type.\n\n" + summary_table.to_markdown(index=False)))
+ipy_display(Markdown("**Table 3.** Summary statistics by weather type.\n\n" + summary_table.to_markdown(index=False)))
 ```
 
 ---
@@ -547,8 +552,7 @@ p3 = (
     )
 )
 
-p3.draw()
-plt.show()
+p3
 ```
 
 A positive association between precipitation and total delay is evident in both panels. The OLS slope is noticeably steeper on weekdays, indicating that high ridership amplifies the impact of adverse weather. The LOESS curve diverges from the OLS line above approximately 15 mm/day, suggesting a saturation effect formally tested in the GAM analysis below. The temperature colour gradient shows that cold precipitation (blue) tends to cluster at higher delay values, consistent with independent freezing effects on track infrastructure.
