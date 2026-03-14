@@ -80,12 +80,13 @@ The primary research questions guiding this analysis are:
 2. How does the distribution of delay incidents vary across discrete weather categories (Clear, Light Rain/Snow, Heavy Rain/Snow)?
 3. Do temporal factors — month of year, day of week, and weekend vs. weekday status — independently moderate the weather–delay relationship once precipitation is controlled for?
 4. Is the precipitation–delay relationship linear, or does it exhibit non-linear saturation behaviour?
+5. How does quantitative transit disruption translate into qualitative rider sentiment, and what are the dominant themes of public discourse on social media during these delay events?
 
 **Hypotheses:**
 
 - H₀: Precipitation has no effect on total daily TTC delay duration (β_precip = 0).
 - H₁: Higher precipitation is positively associated with greater total delay (β_precip > 0), with the effect potentially non-linear at higher precipitation volumes.
-
+- H₂ (Social Impact): Higher quantitative delay severity is associated with increasingly negative public sentiment on social media, with discourse primarily focused on infrastructure and service failures.
 The GitHub repository containing the source code (.qmd) and rendered report (.html) for this project is available at: [https://github.com/xiran-yin/JSC370](https://github.com/xiran-yin/JSC370).
 
 
@@ -434,7 +435,7 @@ ipy_display(Markdown("**Table 3.** Summary statistics by weather type.\n\n" + su
 
 ```{python}
 #| label: fig1-stl
-#| fig-cap: "**Figure 1.** STL decomposition separating the long-term trend, weekly seasonality, and residual weather spikes in daily TTC delays."
+#| fig-cap: "**Figure 1.** STL decomposition separating the long-term trend, weekly seasonality, and residual weather spikes in daily TTC delays"
 #| output: true
 
 from statsmodels.tsa.seasonal import STL
@@ -487,7 +488,7 @@ The STL decomposition reveals critical structural shifts in TTC service reliabil
 
 ```{python}
 #| label: fig2-heatmap
-#| fig-cap: "**Figure 2.** Two-way interaction heatmap of mean daily delay by weekday and calendar month."
+#| fig-cap: "**Figure 2.** Two-way interaction heatmap of mean daily delay by weekday and calendar month"
 #| output: true
 
 day_order   = ['Monday','Tuesday','Wednesday','Thursday','Friday',
@@ -590,7 +591,7 @@ This faceted scatterplot illustrates the complex relationship between daily prec
 
 ```{python}
 #| label: fig4-corr
-#| fig-cap: "**Figure 4.** Spearman correlation matrix across weather and delay variables. Cells with p ≥ 0.05 are left blank."
+#| fig-cap: "**Figure 4.** Spearman correlation matrix across weather and delay variables"
 #| output: true
 
 weather_cols = [
@@ -760,7 +761,7 @@ gam_available = True
 
 ```{python}
 #| label: fig5a-gam-precip
-#| fig-cap: "GAM partial effect of precipitation on delay, showing log-linear rise with plateau above ~15 mm/day."
+#| fig-cap: "**figure5a:** GAM partial effect of precipitation on delay"
 #| output: true
 #| fig-show: true
 p5a = (
@@ -786,7 +787,7 @@ p5a
 
 ```{python}
 #| label: fig5b-gam-temp
-#| fig-cap: "GAM partial effect of temperature on delay, revealing a U-shape: both extreme cold and extreme heat worsen delays."
+#| fig-cap: "**figure5b:** GAM partial effect of temperature on delay"
 #| output: true
 #| fig-show: true
 p5b = (
@@ -906,6 +907,7 @@ if reddit_available:
 ## Lexical Analysis: Word Cloud
 ```{python}
 #| label: fig-wordcloud
+#| fig-cap: "**Figure 6.** Word cloud of the most frequent terms in r/TTC delay posts"
 #| output: true
 
 if reddit_available:
@@ -939,6 +941,7 @@ The word cloud visualizes the most frequent terms in the r/TTC delay discourse. 
 ## Sentiment Distribution
 ```{python}
 #| label: fig-sentiment-hist
+#| fig-cap: "**Figure 7.** Distribution of VADER compound sentiment scores for r/TTC delay posts"
 #| fig-width: 9
 #| fig-height: 4
 #| out-width: "100%"
@@ -1038,6 +1041,7 @@ df_reddit['dominant_topic'] = [
 ## Topic Modeling and Thematic Analysis
 ```{python}
 #| label: lda-topic-table
+#| fig-cap: "**Table 5.** LDA topic model results (k = 4)"
 #| output: true
 ipy_display(Markdown(
     f"**Table 5.** LDA topic model results (k = {best_k}). "
@@ -1058,6 +1062,7 @@ Latent Dirichlet Allocation (LDA) identified four distinct complaint themes with
 ## Topic-Sentiment Interaction
 ```{python}
 #| label: fig-lda-sentiment
+#| fig-cap: "**Figure 8.** Violin + boxplot of sentiment scores by LDA topic"
 #| output: true
 #| fig-width: 9
 #| fig-height: 5
@@ -1088,6 +1093,7 @@ The topic–sentiment violin plot reveals that Topic 3 (Systemic Infrastructure)
 ## Validation by Delay Severity
 ```{python}
 #| label: fig-violin-quartile
+#| fig-cap: "**Figure 9.** Violin + boxplot of sentiment scores by daily delay quartile"
 #| output: true
 df_merged['delay_quartile'] = pd.qcut(
     df_merged['total_delay_mins'], q=4,
@@ -1158,10 +1164,6 @@ if len(df_reddit_merged) <= 0:
     )
     display(p_fallback)
 ```
-## Summary of Preliminary Findings
-The exploratory analysis establishes a clear link between environmental stressors and urban mobility disruptions. The STL decomposition identifies a rising baseline of delays since 2022, while the interaction heatmap highlights February as the highest-risk period. Our regression baseline (OLS) quantifies the significant impact of snowfall and precipitation, but the GAM model reveals the true complexity of the system: a 15mm "saturation plateau" for rainfall and a stark U-shaped thermal vulnerability beyond the 5°C-20°C "resilience window." Finally, the NLP analysis confirms that these physical failures translate directly into negative public sentiment, particularly on high-delay days (Q4), where the discourse shifts from factual reporting to intense frustration. Collectively, these results motivate the development of predictive machine learning models in the upcoming final project.
-
-**Methodological note:** VADER is known to perform poorly on sarcasm and domain-specific technical terms. The LDA topic model mitigates this limitation by providing content-based validation that does not depend on sentiment lexicons.
 
 ---
 
@@ -1171,9 +1173,11 @@ The exploratory analysis establishes a clear link between environmental stressor
 
 This project investigated the relationship between daily weather conditions and TTC subway delays across 12 years of data. By integrating meteorological observations with transit records and qualitative NLP analysis, the preliminary findings directly address the core research questions:
 
-* **Weather as a Primary Driver (RQ1 & RQ2):** Adverse weather demonstrates a statistically significant impact on transit reliability. Total delays increase monotonically with weather severity, peaking on "Heavy Rain/Snow" days. OLS regression identifies liquid precipitation and snowfall as strong positive predictors (p < 0.001), while NLP analysis confirms that these physical service disruptions map directly onto negative commuter sentiment, particularly regarding infrastructure failures.
+* **Weather as a Primary Driver (RQ1 & RQ2):** Adverse weather demonstrates a statistically significant impact on transit reliability. Total delays increase monotonically with weather severity, peaking on "Heavy Rain/Snow" days. OLS regression identifies liquid precipitation and snowfall as strong positive predictors (p < 0.001), confirming that physical service disruptions are fundamentally tied to environmental moisture.
 * **The Ridership Multiplier (RQ3):** Temporal factors act as powerful moderators. The interaction heatmap and faceted scatterplots reveal that the transit network is substantially more fragile on weekdays. High passenger volumes interact with adverse weather to compound disruption, whereas weekends exhibit a lower, more resilient baseline delay.
-* **Thresholds and Non-Linearity (RQ4):** The relationship between weather and delays is fundamentally non-linear, justifying the transition from OLS to Generalized Additive Models (GAM). The precipitation smooth reveals a "saturation plateau" near 15 mm/day, suggesting structural caps on service disruption. Crucially, the GAM uncovers a stark **U-shaped thermal vulnerability**: the TTC operates optimally within a 5°C–20°C "resilience window," with delays escalating sharply during extreme cold (frozen switches) and extreme heat (rail buckling). 
+* **Thresholds and Non-Linearity (RQ4):** The relationship between weather and delays is fundamentally non-linear, justifying the transition from OLS to Generalized Additive Models (GAM). The precipitation smooth reveals a "saturation plateau" near 15 mm/day, suggesting structural caps on service disruption. Crucially, the GAM uncovers a stark **U-shaped thermal vulnerability**: the TTC operates optimally within a 5°C–20°C "resilience window," with delays escalating sharply during extreme cold (frozen switches) and extreme heat (rail buckling).
+* **Social Impact and Commuter Sentiment (RQ5 & H₂):** Qualitative analysis reveals a nuanced psychological response to transit failure. Interestingly, while sentiment drops sharply during moderate-to-severe disruptions (Q3 exhibits the lowest median VADER score), the absolute worst delay days (Q4) see the median score return to 0.0. This non-linear sentiment shift may occurs because, during total system breakdowns (Q4), the subreddit transforms from a complaint board into an emergency information hub. Discourse shifts from emotional venting to factual service updates (scored as neutral) and highly sarcastic expressions of resignation (often misclassified as positive by VADER), highlighting the limitations of lexicon-based sentiment algorithms in extreme context scenarios.
+
 
 ## Plan for the Final Project
 
